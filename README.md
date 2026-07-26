@@ -232,11 +232,13 @@ The Nginx access log contains the request ID, method, path without its query
 string, response status and size, timings, user agent, and safe forwarding
 information. It never records cookies, authorization, form bodies, passwords,
 CSRF values, or full query strings. Only this structured JSON access log is
-shipped to LGTM. Stock Nginx error-file lines cannot be safely JSON-formatted
-or guaranteed to omit query strings, so native error-file shipping is disabled
-and only startup/container-process diagnostics remain available through
-`docker compose logs`. See [DEVIATIONS.md](DEVIATIONS.md) for the conservative
-security decision.
+shipped to LGTM. Native runtime errors are written to container stderr at
+`warn` severity and are available with `docker compose logs nginx`; they are
+not added to the filelog collector. Stock Nginx error lines are not JSON and
+can contain the full request target. This is a local diagnostic stream, so do
+not put secrets in query strings. See the
+[initial bootstrap deviations](docs/plans/initial-bootstrap-deviations.md) for
+the conservative security decision.
 
 ## Troubleshooting
 
@@ -247,6 +249,10 @@ volumes as described above.
 
 If Nginx returns `502 Bad Gateway`, confirm that Litestar is listening on
 `0.0.0.0:8000` and that Docker supports the configured host-gateway mapping.
+Inspect `docker compose logs nginx` for the native upstream connection error.
+Only the structured access log is shipped to LGTM; native error lines remain
+on container stderr, are not JSON, and can contain the full request target, so
+do not put secrets in query strings.
 The `/nginx-health` endpoint proves only that Nginx itself is running; `/livez`
 and `/readyz` are application liveness and dependency-readiness checks.
 

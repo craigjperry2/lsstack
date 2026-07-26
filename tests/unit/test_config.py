@@ -39,6 +39,12 @@ def test_checked_in_env_example_parses_comma_separated_trusted_hosts(
     assert settings.trusted_hosts == ("localhost", "127.0.0.1")
 
 
+def test_pytest_environment_disables_telemetry_over_checked_in_example() -> None:
+    settings = load_settings(env_file=".env.example")
+
+    assert settings.telemetry_enabled is False
+
+
 def test_trusted_hosts_environment_value_is_not_json_decoded(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

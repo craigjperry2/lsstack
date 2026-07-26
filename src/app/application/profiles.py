@@ -22,7 +22,7 @@ def change_password(
     new_password_confirmation: str,
 ) -> int:
     """Replace a password and revoke all previous session versions."""
-    user = uow.users.get_by_id(user_id)
+    user = uow.users.get_by_id_for_update(user_id)
     if user is None:
         raise InvalidSessionError("The authenticated user no longer exists.")
     verification = password_hasher.verify(current_password, user.password_hash)
@@ -31,7 +31,7 @@ def change_password(
     if new_password != new_password_confirmation:
         raise ValidationError("new_password_confirmation", "Passwords do not match.")
     validate_password(new_password, user.email_normalized)
-    updated = uow.users.update(
+    updated = uow.users.update_credentials(
         user.with_password(password_hasher.hash(new_password), clock.now())
     )
     return updated.session_version

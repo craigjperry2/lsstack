@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar, cast
+
+# Pytest must disable exporters before collection imports any app module.
+os.environ["TELEMETRY_ENABLED"] = "false"
 
 import pytest
 from litestar import Litestar
@@ -68,6 +72,7 @@ class FakePublicIds:
 class FakeUserRepository:
     def __init__(self) -> None:
         self.values: dict[int, User] = {}
+        self.calls: list[str] = []
 
     def add(self, user: User) -> User:
         if any(
@@ -87,9 +92,15 @@ class FakeUserRepository:
         return stored
 
     def get_by_id(self, user_id: int) -> User | None:
+        self.calls.append("get_by_id")
         return self.values.get(user_id)
 
-    def get_by_email(self, email_normalized: str) -> User | None:
+    def get_by_id_for_update(self, user_id: int) -> User | None:
+        self.calls.append("get_by_id_for_update")
+        return self.values.get(user_id)
+
+    def get_by_email_for_update(self, email_normalized: str) -> User | None:
+        self.calls.append("get_by_email_for_update")
         return next(
             (
                 user
@@ -99,10 +110,23 @@ class FakeUserRepository:
             None,
         )
 
-    def update(self, user: User) -> User:
-        assert user.id is not None
-        self.values[user.id] = user
-        return user
+    def update_credentials(self, user: User) -> User:
+        self.calls.append("update_credentials")
+        if user.id is None:
+            raise ValueError("Cannot update an unpersisted user.")
+        existing = self.values.get(user.id)
+        if existing is None:
+            raise ValueError("Cannot update a missing user.")
+        stored = User(
+            id=existing.id,
+            email_normalized=existing.email_normalized,
+            password_hash=user.password_hash,
+            session_version=user.session_version,
+            created_at=existing.created_at,
+            updated_at=user.updated_at,
+        )
+        self.values[user.id] = stored
+        return stored
 
 
 class FakeTaskRepository:

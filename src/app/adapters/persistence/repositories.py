@@ -95,19 +95,30 @@ class SqlAlchemyUserRepository(UserRepository):
         model = self._session.get(UserModel, user_id)
         return None if model is None else _user(model)
 
-    def get_by_email(self, email_normalized: str) -> User | None:
+    def get_by_id_for_update(self, user_id: int) -> User | None:
         model = self._session.scalar(
-            select(UserModel).where(UserModel.email_normalized == email_normalized)
+            select(UserModel)
+            .where(UserModel.id == user_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
         return None if model is None else _user(model)
 
-    def update(self, user: User) -> User:
+    def get_by_email_for_update(self, email_normalized: str) -> User | None:
+        model = self._session.scalar(
+            select(UserModel)
+            .where(UserModel.email_normalized == email_normalized)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return None if model is None else _user(model)
+
+    def update_credentials(self, user: User) -> User:
         if user.id is None:
             raise ValueError("Cannot update an unpersisted user.")
         model = self._session.get(UserModel, user.id)
         if model is None:
             raise ValueError("Cannot update a missing user.")
-        model.email_normalized = user.email_normalized
         model.password_hash = user.password_hash
         model.session_version = user.session_version
         model.updated_at = user.updated_at

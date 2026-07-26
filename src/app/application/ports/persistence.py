@@ -14,9 +14,17 @@ class UserRepository(Protocol):
 
     def get_by_id(self, user_id: int) -> User | None: ...
 
-    def get_by_email(self, email_normalized: str) -> User | None: ...
+    def get_by_id_for_update(self, user_id: int) -> User | None:
+        """Return and lock a user until the surrounding transaction ends."""
+        ...
 
-    def update(self, user: User) -> User: ...
+    def get_by_email_for_update(self, email_normalized: str) -> User | None:
+        """Return and lock a user until the surrounding transaction ends."""
+        ...
+
+    def update_credentials(self, user: User) -> User:
+        """Persist credential state after a lock-taking read in this transaction."""
+        ...
 
 
 class TaskRepository(Protocol):

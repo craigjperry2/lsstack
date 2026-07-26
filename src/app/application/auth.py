@@ -77,7 +77,7 @@ def authenticate(
     except ValidationError:
         password_hasher.verify_unknown(password)
         raise InvalidCredentialsError("Invalid email or password.") from None
-    user = uow.users.get_by_email(email_normalized)
+    user = uow.users.get_by_email_for_update(email_normalized)
     if user is None:
         password_hasher.verify_unknown(password)
         raise InvalidCredentialsError("Invalid email or password.")
@@ -85,7 +85,7 @@ def authenticate(
     if not verification.valid:
         raise InvalidCredentialsError("Invalid email or password.")
     if verification.replacement_hash is not None:
-        user = uow.users.update(
+        user = uow.users.update_credentials(
             user.with_rehashed_password(verification.replacement_hash, clock.now())
         )
     if user.id is None:

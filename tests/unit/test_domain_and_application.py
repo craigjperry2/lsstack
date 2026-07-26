@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -193,6 +193,76 @@ def test_successful_login_upgrades_an_obsolete_hash() -> None:
         password="correct-horse-battery",
     )
     assert uow.users.values[original.user_id].password_hash == "current-hash"
+    assert uow.users.calls == [
+        "get_by_email_for_update",
+        "update_credentials",
+    ]
+
+
+def test_credential_use_cases_select_locking_repository_reads() -> None:
+    uow = FakeUnitOfWork()
+    clock = FakeClock()
+    passwords = FakePasswordHasher()
+    auth = register(
+        uow,
+        passwords,
+        clock,
+        email="locking@example.com",
+        password="correct-horse-battery",
+    )
+
+    authenticate(
+        uow,
+        passwords,
+        clock,
+        email="locking@example.com",
+        password="correct-horse-battery",
+    )
+    assert uow.users.calls == ["get_by_email_for_update"]
+
+    uow.users.calls.clear()
+    assert (
+        change_password(
+            uow,
+            passwords,
+            clock,
+            user_id=auth.user_id,
+            current_password="correct-horse-battery",
+            new_password="replacement-password",
+            new_password_confirmation="replacement-password",
+        )
+        == 1
+    )
+    assert uow.users.calls == [
+        "get_by_id_for_update",
+        "update_credentials",
+    ]
+
+
+def test_fake_credential_update_preserves_persisted_identity_fields() -> None:
+    uow = FakeUnitOfWork()
+    auth = register(
+        uow,
+        FakePasswordHasher(),
+        FakeClock(),
+        email="identity@example.com",
+        password="correct-horse-battery",
+    )
+    persisted = uow.users.values[auth.user_id]
+
+    updated = uow.users.update_credentials(
+        replace(
+            persisted,
+            email_normalized="stale@example.com",
+            password_hash="replacement-hash",
+            session_version=1,
+        )
+    )
+
+    assert updated.email_normalized == "identity@example.com"
+    assert updated.created_at == persisted.created_at
+    assert updated.password_hash == "replacement-hash"
+    assert updated.session_version == 1
 
 
 def test_failed_outbox_publication_retries_only_after_lease_expiry() -> None:

@@ -17,20 +17,21 @@ cannot be followed literally because of an edge case or an upstream constraint.
   the outbox UUID. The implementation does not mutate function metadata or
   private plugin state.
 
-## Nginx error-log shipping
+## Nginx native error-log handling
 
-- **Plan intent:** ship structured JSON access and error logs without full query
-  strings or sensitive request data.
+- **Plan intent:** retain useful Nginx runtime errors while shipping structured
+  logs without full query strings or sensitive request data.
 - **Edge case:** the pinned stock Nginx image supports a custom format for
   access logs, but not for its native error log. Native error lines can contain
   the complete request target, including its query string. Correcting this
   would require a custom image or additional scripting/module support outside
   the planned local stack.
-- **Conservative choice:** disable native error-file shipping and ship only the
-  structured JSON access log, whose `path` uses query-free `$uri`. Access
-  records retain status, request ID, byte counts, request/upstream timing, user
-  agent, and safe forwarding fields, including for failed requests. Container
-  diagnostics remain available through Docker's own service logs.
+- **Conservative choice:** write the native error log to container stderr at
+  `warn` severity, where it is available with `docker compose logs nginx`, but
+  do not add it to the filelog collector. Only the structured JSON access log,
+  whose `path` uses query-free `$uri`, is shipped to LGTM. Native error lines
+  are a local, non-JSON diagnostic stream and can contain the full request
+  target, so developers must not put secrets in query strings.
 
 ## SAQ role search-path order
 
