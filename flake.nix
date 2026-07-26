@@ -23,11 +23,17 @@
             packages = [
               pkgs.python312
               pkgs.uv
+            ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [
+              pkgs.stdenv.cc.cc.lib
             ];
 
             env = {
               LITESTAR_APP = "app.main:app";
               UV_PYTHON = "${pkgs.python312}/bin/python";
+            } // pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+              LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+                pkgs.stdenv.cc.cc.lib
+              ];
             };
           };
         });
