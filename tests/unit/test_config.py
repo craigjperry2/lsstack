@@ -63,7 +63,7 @@ def test_trusted_hosts_environment_value_is_not_json_decoded(
 def test_production_rejects_checked_in_placeholder_secrets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    for name in ("SESSION_SECRET", "CSRF_SECRET"):
+    for name in ("DEBUG", "SESSION_SECRET", "CSRF_SECRET"):
         monkeypatch.delenv(name, raising=False)
     with pytest.raises(ValidationError, match="non-placeholder"):
         Settings(environment="production")
