@@ -33,7 +33,7 @@ class Settings(BaseSettings):
         default="local",
         validation_alias=AliasChoices("environment", "APP_ENV", "ENVIRONMENT"),
     )
-    debug: bool = True
+    debug: bool = False
     database_url: str = "postgresql+psycopg://app_user:app_password@localhost:5432/app"
     admin_database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/postgres"
@@ -168,6 +168,8 @@ class Settings(BaseSettings):
         local = self.environment in {"local", "test", "development"}
         placeholder_markers = ("change-me", "changeme", "placeholder")
         if not local:
+            if self.debug:
+                raise ValueError("DEBUG must be false outside local environments.")
             for field_name, secret in (
                 ("SESSION_SECRET", self.session_secret),
                 ("CSRF_SECRET", self.csrf_secret),

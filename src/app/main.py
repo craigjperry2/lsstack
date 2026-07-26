@@ -60,7 +60,10 @@ def _session_secret(secret: str) -> bytes:
 def create_app(settings: Settings | None = None) -> Litestar:
     """Compose a runnable application, allowing isolated test configuration."""
     runtime_settings = settings or load_settings()
-    engine = create_engine(runtime_settings.database_url, echo=runtime_settings.debug)
+    diagnostics_enabled = (
+        runtime_settings.debug and runtime_settings.environment != "production"
+    )
+    engine = create_engine(runtime_settings.database_url, echo=diagnostics_enabled)
     transactions = TransactionRunner(
         create_async_session_factory(engine),
         cleanup_timeout_seconds=runtime_settings.transaction_cleanup_timeout_seconds,
@@ -156,7 +159,7 @@ def create_app(settings: Settings | None = None) -> Litestar:
         lifespan=[database_lifespan],
         cache_control=CacheControlHeader(no_store=True),
         request_max_body_size=65_536,
-        debug=runtime_settings.debug,
+        debug=diagnostics_enabled,
         openapi_config=None,
     )
     # Litestar applies its own stdlib logging configuration while constructing

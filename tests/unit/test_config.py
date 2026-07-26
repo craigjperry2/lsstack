@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.config import LOCAL_SECRET, Settings, load_settings
+from app.main import create_app
 
 VALID_PRODUCTION_SETTINGS: dict[str, object] = {
     "environment": "production",
@@ -66,6 +67,30 @@ def test_production_rejects_checked_in_placeholder_secrets(
         monkeypatch.delenv(name, raising=False)
     with pytest.raises(ValidationError, match="non-placeholder"):
         Settings(environment="production")
+
+
+def test_production_rejects_debug_diagnostics() -> None:
+    values = {**VALID_PRODUCTION_SETTINGS, "debug": True}
+
+    with pytest.raises(ValidationError, match="DEBUG must be false"):
+        Settings(**values)  # pyright: ignore[reportArgumentType]
+
+
+def test_production_composition_disables_all_debug_sinks() -> None:
+    settings = Settings(**VALID_PRODUCTION_SETTINGS)  # pyright: ignore[reportArgumentType]
+    bypassed_settings = settings.model_copy(update={"debug": True})
+
+    application = create_app(bypassed_settings)
+
+    assert application.debug is False
+    assert application.state.engine.echo is False
+
+
+def test_local_composition_allows_explicit_debug_sinks() -> None:
+    application = create_app(Settings(debug=True))
+
+    assert application.debug is True
+    assert application.state.engine.echo is True
 
 
 @pytest.mark.parametrize(
