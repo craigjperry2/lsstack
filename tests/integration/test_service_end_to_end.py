@@ -48,8 +48,9 @@ async def test_nginx_routing_request_ids_headers_and_static_cache_policy() -> No
     if os.environ.get("RUN_SERVICE_TESTS") != "1":
         pytest.skip("Set RUN_SERVICE_TESTS=1 after starting Nginx, app, and worker.")
 
+    settings = load_settings(env_file=None)
     async with httpx.AsyncClient(
-        base_url="http://127.0.0.1:8080",
+        base_url=settings.public_base_url,
         timeout=5,
     ) as client:
         dynamic = await client.get(
@@ -82,11 +83,12 @@ async def test_task_reaches_real_worker_and_persists_processed_timestamp() -> No
     if os.environ.get("RUN_SERVICE_TESTS") != "1":
         pytest.skip("Set RUN_SERVICE_TESTS=1 after starting Nginx, app, and worker.")
 
+    settings = load_settings(env_file=None)
     unique = uuid4().hex
     email = f"service-{unique}@example.com"
     title = f"Service task {unique}"
     async with httpx.AsyncClient(
-        base_url="http://127.0.0.1:8080",
+        base_url=settings.public_base_url,
         follow_redirects=False,
         timeout=5,
     ) as client:
@@ -127,7 +129,6 @@ async def test_task_reaches_real_worker_and_persists_processed_timestamp() -> No
                 )
             await anyio.sleep(0.2)
 
-    settings = load_settings(env_file=None)
     engine = create_engine(settings.database_url)
     runner = TransactionRunner(create_async_session_factory(engine))
     try:

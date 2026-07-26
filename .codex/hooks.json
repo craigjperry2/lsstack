@@ -1,0 +1,18 @@
+{
+  "description": "Repository safety guardrails for Git and GitHub shell commands.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/tools/hook_policy.py\"",
+            "timeout": 5,
+            "statusMessage": "Checking Git and GitHub command safety"
+          }
+        ]
+      }
+    ]
+  }
+}

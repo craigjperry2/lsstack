@@ -17,51 +17,46 @@ There is no application image or production deployment configuration.
 - Docker Engine with the Compose v2 plugin, or Docker Desktop
 
 The flake supports `x86_64-linux`, `aarch64-linux`, `x86_64-darwin`, and
-`aarch64-darwin`. It exposes only Python 3.12 and `uv`; `uv` owns `.venv` and
-all Python developer tools.
+`aarch64-darwin`. It exposes Python 3.12, `uv`, `just`, Git, GitHub CLI,
+Node.js, and `pnpm`; `uv` owns `.venv` and all Python developer tools.
 
 ## First run
 
-Create a local environment file, enter the development shell, and install the
-exact locked dependency set:
+Start the entire local stack from a clean checkout with one command:
 
 ```console
-cp .env.example .env
-nix develop
-uv sync --all-groups --frozen
+nix develop --command just up
 ```
+
+`just up` creates `.env` from `.env.example` when needed, installs the exact
+locked dependencies, allocates an isolated Compose project and ports for the
+current worktree, waits for the containers, migrates the database, starts the
+host application and worker, and waits for application readiness through
+Nginx. Repeating it is safe: already-running owned processes are reused.
+
+Enter the shell and list every supported command when working interactively:
+
+```console
+nix develop
+just --list
+```
+
+The startup output prints this worktree's application and Grafana URLs. The
+primary checkout prefers the conventional ports below; linked worktrees use
+persisted collision-resistant alternatives so multiple stacks can run in
+parallel:
+
+- application through Nginx: [http://localhost:8080](http://localhost:8080)
+- Grafana: [http://localhost:3000](http://localhost:3000)
+
+Use `just urls` rather than assuming these ports. Do not browse directly to the
+host application port: going through Nginx exercises request-ID propagation,
+security headers, static caching, and access-log collection. The LGTM image is
+a development observability backend, not a production monitoring installation.
 
 The checked-in secrets and passwords are deliberately local-only. Session
 cookies use `Secure=false` because local Nginx serves plain HTTP. Do not reuse
 these settings outside an isolated development machine.
-
-Start the dependency stack and migrate the application schema:
-
-```console
-docker compose up -d --wait
-uv run alembic upgrade head
-```
-
-Run Litestar/Uvicorn on the host:
-
-```console
-uv run litestar run --reload --host 0.0.0.0 --port 8000
-```
-
-In a second `nix develop` shell, start the configured SAQ worker:
-
-```console
-uv run litestar workers run
-```
-
-Open the application through Nginx at
-[http://localhost:8080](http://localhost:8080). Do not browse directly to port
-8000: going through Nginx exercises request-ID propagation, security headers,
-static caching, and access-log collection.
-
-Grafana is available at [http://localhost:3000](http://localhost:3000). The
-LGTM image is a development observability backend, not a production monitoring
-installation.
 
 ## What runs where
 
@@ -90,90 +85,66 @@ in `saq`; do not add SAQ's internal tables to Alembic migrations.
 
 ## Everyday commands
 
-Run the fast database-free suite:
+Discover recipes and inspect the running stack:
 
 ```console
-uv run pytest tests/architecture tests/unit
+just --list
+just status
+just urls
+just diagnose
 ```
 
-Running `uv run pytest` also exercises the in-process web and performance
-checks, but deliberately skips destructive database tests unless they are
-explicitly enabled.
-
-For the database-backed suite, start Compose and export the admin, application,
-SAQ, and `_test` database URLs from the local environment file before opting
-in:
+Run all tests or focused subsets:
 
 ```console
-docker compose up -d --wait
-set -a
-. ./.env
-set +a
-RUN_DATABASE_TESTS=1 uv run pytest
+just test-fast
+just test-unit
+just test-architecture
+just test-integration
+just test-performance
+just test-service
+just test-all
+just test tests/unit/test_config.py -k cookie
 ```
 
-The fixture refuses destructive setup unless `TEST_DATABASE_URL` names a
-disposable database ending in `_test`. It uses `ADMIN_DATABASE_URL` only to
-create and drop that database, then connects through the isolated application
-and SAQ roles. Never point these variables at shared data.
+`test-integration`, `test-performance`, `test-service`, and `test-all` start the
+worktree stack as needed and export its allocated URLs. The database fixture
+still refuses destructive setup unless `TEST_DATABASE_URL` names a disposable
+database ending in `_test`. It uses `ADMIN_DATABASE_URL` only to create and
+drop that database. Never point these variables at shared data.
 
-To include the real Nginx-to-web-to-outbox-to-worker checks, also start the host
-application and worker as described above, then run:
+Run the non-mutating quality gate, apply formatting fixes, or exercise the
+configured hooks:
 
 ```console
-RUN_DATABASE_TESTS=1 RUN_SERVICE_TESTS=1 uv run pytest
+just check
+just fix
+just hooks-install
+just prek
 ```
 
-The service smoke test creates a uniquely named local user and task in the
-normal `lsstack` development database and waits with a bounded poll for the
-worker's persisted result.
-
-Run the database-free checks:
+Seed the documented local demo account and deterministic sample tasks:
 
 ```console
-uv run pytest tests/architecture tests/unit
-uv run ruff check .
-uv run ruff format --check .
-uv run basedpyright
-uv run lint-imports
+just db-seed
 ```
 
-Format and apply safe lint fixes:
+The defaults are `agent@example.test` and `correct-horse-battery`, configurable
+through `DEV_SEED_EMAIL` and `DEV_SEED_PASSWORD`. Seeding is idempotent and
+refuses non-local environments or non-loopback databases.
+
+Stop the current worktree's services without deleting their data:
 
 ```console
-uv run ruff format .
-uv run ruff check --fix .
+just down
 ```
 
-Install and exercise the repository hooks:
+To reset only the current worktree's PostgreSQL and LGTM volumes, first ask for
+the project-specific confirmation token:
 
 ```console
-uv run prek install --hook-type pre-commit --hook-type pre-push
-uv run prek run --all-files
-uv run prek run --all-files --hook-stage pre-push
-```
-
-Inspect service state and logs:
-
-```console
-docker compose ps
-docker compose logs -f postgres nginx nginx-log-collector lgtm
-```
-
-Stop the local services without deleting their data:
-
-```console
-docker compose down --remove-orphans
-```
-
-To reset all local PostgreSQL and LGTM state, stop the host application and
-worker first, then remove the named volumes. This permanently deletes the
-local development database:
-
-```console
-docker compose down --volumes --remove-orphans
-docker compose up -d --wait
-uv run alembic upgrade head
+just db-reset
+# Then repeat the command with the printed reset-<project> token.
 ```
 
 ## Database changes
@@ -181,7 +152,7 @@ uv run alembic upgrade head
 After changing a SQLAlchemy model, generate a candidate migration:
 
 ```console
-uv run alembic revision --autogenerate -m "describe the change"
+just db-revision "describe the change"
 ```
 
 Review and edit the generated migration before running it. In particular,
@@ -190,9 +161,9 @@ and whether an apparent drop/add should instead be a rename. Then verify both
 directions against a disposable local database:
 
 ```console
-uv run alembic upgrade head
+just db-migrate
 uv run alembic downgrade -1
-uv run alembic upgrade head
+just db-migrate
 ```
 
 Commit the reviewed migration with its model change.
@@ -228,12 +199,28 @@ errors, duration, event-loop lag, queue activity, application/Nginx logs, and
 recent traces. A provisioned alert waits 30 seconds before firing when measured
 event-loop lag remains above 20 ms.
 
+Agents can query the same backends directly through the active worktree's LGTM
+container:
+
+```console
+just obs logs --since 15m
+just obs traces --query '{ resource.service.name = "lsstack" && duration > 100ms }'
+just obs metrics --query 'event_loop_lag_seconds'
+just obs correlate <request-id>
+just obs --json traces
+just obs check
+```
+
+The commands return concise output by default and JSON on request. Empty
+results explain the likely exporter-ingestion delay and can be retried without
+changing state.
+
 The Nginx access log contains the request ID, method, path without its query
 string, response status and size, timings, user agent, and safe forwarding
 information. It never records cookies, authorization, form bodies, passwords,
 CSRF values, or full query strings. Only this structured JSON access log is
 shipped to LGTM. Native runtime errors are written to container stderr at
-`warn` severity and are available with `docker compose logs nginx`; they are
+`warn` severity and are available with `just logs nginx`; they are
 not added to the filelog collector. Stock Nginx error lines are not JSON and
 can contain the full request target. This is a local diagnostic stream, so do
 not put secrets in query strings. See the
@@ -242,14 +229,17 @@ the conservative security decision.
 
 ## Troubleshooting
 
-If `docker compose up --wait` fails, inspect `docker compose ps` and the
-unhealthy service's logs. PostgreSQL initialization scripts run only when its
-data volume is empty; after changing local roles or the init script, reset the
-volumes as described above.
+If `just up` fails, start with `just diagnose`. It includes Compose state plus
+bounded app, worker, and container logs. Use `just logs app`, `just logs worker`,
+or `just logs <compose-service> --follow` for a live stream. PostgreSQL
+initialization scripts run only when its data volume is empty; after changing
+local roles or the init script, reset this worktree's volumes as described
+above.
 
-If Nginx returns `502 Bad Gateway`, confirm that Litestar is listening on
-`0.0.0.0:8000` and that Docker supports the configured host-gateway mapping.
-Inspect `docker compose logs nginx` for the native upstream connection error.
+If Nginx returns `502 Bad Gateway`, use `just status` to confirm that Litestar
+is listening on this worktree's allocated app port and that Docker supports
+the configured host-gateway mapping.
+Inspect `just logs nginx` for the native upstream connection error.
 Only the structured access log is shipped to LGTM; native error lines remain
 on container stderr, are not JSON, and can contain the full request target, so
 do not put secrets in query strings.
@@ -257,15 +247,34 @@ The `/nginx-health` endpoint proves only that Nginx itself is running; `/livez`
 and `/readyz` are application liveness and dependency-readiness checks.
 
 If login works with an HTTP client but not a browser, confirm `.env` still has
-`SESSION_COOKIE_SECURE=false` for local HTTP and that you are browsing
-`http://localhost:8080`. Clear old `localhost` cookies after changing session
-or CSRF secrets.
+`SESSION_COOKIE_SECURE=false` for local HTTP and that you are browsing the
+application URL from `just urls`. Clear old cookies for that host after
+changing session or CSRF secrets.
 
 If telemetry is absent, confirm `TELEMETRY_ENABLED=true`, check the application,
 worker, collector, and LGTM logs, then generate traffic through Nginx. Exporters
 retry with bounded queues, so LGTM can start after the host processes.
 
 ## Manual browser smoke check
+
+Install the pinned agent-friendly Playwright CLI with `pnpm` and keep each flow
+in an ignored artifact directory:
+
+```console
+just browser-install
+just urls
+just browser smoke open <application-url-printed-above>
+just browser smoke snapshot
+just browser smoke requests
+just browser smoke request 1
+just browser smoke console warning
+just browser smoke screenshot
+```
+
+The repository never uses `npx`; browser commands run pinned
+`@playwright/cli@0.1.17` through `pnpm dlx`. You can also use
+`tracing-start`/`tracing-stop`. Artifacts are stored in
+`output/playwright/<session>/`.
 
 Before handing off a change:
 

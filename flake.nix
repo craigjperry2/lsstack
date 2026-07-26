@@ -21,6 +21,11 @@
         {
           default = pkgs.mkShell {
             packages = [
+              pkgs.gh
+              pkgs.git
+              pkgs.just
+              pkgs.nodejs_22
+              pkgs.pnpm
               pkgs.python312
               pkgs.uv
             ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [

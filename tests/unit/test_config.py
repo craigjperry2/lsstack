@@ -19,7 +19,13 @@ VALID_PRODUCTION_SETTINGS: dict[str, object] = {
 def test_local_environment_accepts_checked_in_development_values(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    for name in ("APP_ENV", "ENVIRONMENT", "SESSION_SECRET", "CSRF_SECRET"):
+    for name in (
+        "APP_ENV",
+        "ENVIRONMENT",
+        "SESSION_SECRET",
+        "CSRF_SECRET",
+        "PUBLIC_BASE_URL",
+    ):
         monkeypatch.delenv(name, raising=False)
     settings = Settings()
 

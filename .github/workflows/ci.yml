@@ -47,27 +47,16 @@ jobs:
         run: nix flake check --all-systems --no-build
 
       - name: Install locked dependencies
-        run: nix develop --command uv sync --all-groups --frozen
+        run: nix develop --command just setup
 
-      - name: Check formatting
-        run: nix develop --command uv run ruff format --check .
-
-      - name: Lint
-        run: nix develop --command uv run ruff check .
-
-      - name: Type check
-        run: nix develop --command uv run basedpyright
-
-      - name: Check import contracts
-        run: nix develop --command uv run lint-imports
-
-      - name: Run architecture and unit tests
-        run: nix develop --command uv run pytest tests/architecture tests/unit
+      - name: Run non-mutating quality gate
+        run: nix develop --command just check
 
       - name: Run prek hook stages
-        run: |
-          nix develop --command uv run prek run --all-files --hook-stage pre-commit
-          nix develop --command uv run prek run --all-files --hook-stage pre-push
+        run: nix develop --command just prek
+
+      - name: Verify hooks made no changes
+        run: git diff --exit-code
 
   integration:
     name: Linux integration
@@ -103,96 +92,32 @@ jobs:
           key: uv-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('uv.lock') }}
 
       - name: Install locked dependencies
-        run: nix develop --command uv sync --all-groups --frozen
+        run: nix develop --command just setup
 
       - name: Validate Compose model
         run: docker compose config --quiet
 
-      - name: Start local dependencies
-        run: docker compose up -d --wait
-
-      - name: Upgrade application schema
-        run: nix develop --command uv run alembic upgrade head
-
-      - name: Start host application and worker
-        run: |
-          mkdir -p .ci
-          nix develop --command uv run litestar run --host 0.0.0.0 --port 8000 >.ci/app.log 2>&1 &
-          echo "$!" >.ci/app.pid
-          nix develop --command uv run litestar workers run >.ci/worker.log 2>&1 &
-          echo "$!" >.ci/worker.pid
-
-      - name: Wait for application through Nginx
-        run: |
-          for attempt in $(seq 1 60); do
-            echo "Readiness attempt ${attempt}/60"
-            if curl --fail --silent --show-error http://127.0.0.1:8080/readyz >/dev/null; then
-              exit 0
-            fi
-            if ! kill -0 "$(cat .ci/app.pid)" 2>/dev/null; then
-              cat .ci/app.log
-              exit 1
-            fi
-            sleep 1
-          done
-          echo "Application did not become ready through Nginx" >&2
-          exit 1
+      - name: Start isolated application stack
+        run: nix develop --command just up
 
       - name: Run integration, performance, and service smoke tests
-        run: >-
-          nix develop --command uv run pytest
-          tests/integration
-          tests/performance
+        run: nix develop --command just test-all
 
       - name: Verify local observability ingestion
-        run: |
-          curl --fail --silent --show-error http://127.0.0.1:8080/livez >/dev/null
-          seen_app_log=0
-          seen_worker_log=0
-          seen_nginx_log=0
-          seen_metric=0
-          seen_trace=0
-          for attempt in $(seq 1 120); do
-            app_logs=$(docker compose exec -T lgtm curl --fail --silent --get \
-              --data-urlencode 'query={service_name="lsstack"}' \
-              --data-urlencode 'limit=1' \
-              http://127.0.0.1:3100/loki/api/v1/query_range)
-            worker_logs=$(docker compose exec -T lgtm curl --fail --silent --get \
-              --data-urlencode 'query={service_name="lsstack"} |= "outbox_message_acknowledged"' \
-              --data-urlencode 'limit=1' \
-              http://127.0.0.1:3100/loki/api/v1/query_range)
-            nginx_logs=$(docker compose exec -T lgtm curl --fail --silent --get \
-              --data-urlencode 'query={service_name="nginx"}' \
-              --data-urlencode 'limit=1' \
-              http://127.0.0.1:3100/loki/api/v1/query_range)
-            metrics=$(docker compose exec -T lgtm curl --fail --silent --get \
-              --data-urlencode 'query=event_loop_lag_seconds' \
-              http://127.0.0.1:9090/api/v1/query)
-            traces=$(docker compose exec -T lgtm curl --fail --silent --get \
-              --data-urlencode 'q={ resource.service.name = "lsstack" }' \
-              --data-urlencode 'limit=1' \
-              http://127.0.0.1:3200/api/search)
-            case "${app_logs}" in *'"result":[]'*) ;; *) seen_app_log=1 ;; esac
-            case "${worker_logs}" in *'"result":[]'*) ;; *) seen_worker_log=1 ;; esac
-            case "${nginx_logs}" in *'"result":[]'*) ;; *) seen_nginx_log=1 ;; esac
-            case "${metrics}" in *'"result":[]'*) ;; *) seen_metric=1 ;; esac
-            case "${traces}" in *'"traces":[]'*) ;; *) seen_trace=1 ;; esac
-            if test "${seen_app_log}${seen_worker_log}${seen_nginx_log}${seen_metric}${seen_trace}" = "11111"; then
-              exit 0
-            fi
-            echo "Ingestion attempt ${attempt}/120: app_log=${seen_app_log} worker_log=${seen_worker_log} nginx_log=${seen_nginx_log} metric=${seen_metric} trace=${seen_trace}"
-            sleep 1
-          done
-          echo "Required local telemetry did not arrive before the bounded deadline" >&2
-          exit 1
+        run: nix develop --command just obs check --timeout 120
 
       - name: Verify Nginx upstream failure diagnostics
         run: |
+          set -a
+          . ./.run/stack.env
+          set +a
           docker compose exec -T nginx nginx -t
-          kill "$(cat .ci/app.pid)"
+          app_pid=$(nix develop --command python -c \
+            'import json; print(json.load(open(".run/processes.json"))["processes"]["app"]["pid"])')
+          kill "${app_pid}"
           for attempt in $(seq 1 50); do
             if ! curl --silent --output /dev/null --max-time 1 \
-              http://127.0.0.1:8000/livez; then
+              "http://127.0.0.1:${APP_PORT}/livez"; then
               break
             fi
             if test "${attempt}" = "50"; then
@@ -203,7 +128,7 @@ jobs:
           done
           status=$(curl --silent --output /dev/null --max-time 10 \
             --write-out '%{http_code}' \
-            http://127.0.0.1:8080/__ci_nginx_upstream_failure_probe__)
+            "http://127.0.0.1:${NGINX_PORT}/__ci_nginx_upstream_failure_probe__")
           test "${status}" = "502"
           nginx_logs=$(docker compose logs --no-color --since 1m nginx)
           case "${nginx_logs}" in
@@ -219,25 +144,19 @@ jobs:
         if: always()
         run: |
           mkdir -p .ci
-          docker compose ps --all >.ci/compose-ps.log
-          docker compose logs --no-color >.ci/compose.log 2>&1
+          nix develop --command just diagnose >.ci/diagnose.log 2>&1 || true
 
       - name: Upload failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: integration-diagnostics
-          path: .ci/
+          path: |
+            .ci/
+            .run/*.log
           if-no-files-found: warn
           retention-days: 7
 
       - name: Stop host processes and Compose
         if: always()
-        run: |
-          if test -f .ci/worker.pid; then
-            kill "$(cat .ci/worker.pid)" 2>/dev/null || true
-          fi
-          if test -f .ci/app.pid; then
-            kill "$(cat .ci/app.pid)" 2>/dev/null || true
-          fi
-          docker compose down --remove-orphans
+        run: nix develop --command just down

@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev_password}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/10-lsstack.sql:ro
@@ -27,9 +27,9 @@ services:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /otel-lgtm/grafana/conf/provisioning/dashboards/lsstack/lsstack.json
     ports:
-      - "127.0.0.1:3000:3000"
-      - "127.0.0.1:4317:4317"
-      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:${GRAFANA_PORT:-3000}:3000"
+      - "127.0.0.1:${OTLP_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${OTLP_HTTP_PORT:-4318}:4318"
     volumes:
       - lgtm_data:/data
       - ./infra/observability/grafana/provisioning/dashboards/lsstack.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/lsstack.yaml:ro
@@ -68,11 +68,15 @@ services:
 
   nginx:
     image: nginx:1.29.8-alpine3.23
+    environment:
+      NGINX_ENVSUBST_FILTER: NGINX_UPSTREAM_PORT
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx
+      NGINX_UPSTREAM_PORT: ${NGINX_UPSTREAM_PORT:-8000}
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${NGINX_PORT:-8080}:8080"
     volumes:
       - nginx_logs:/var/log/nginx-json
-      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infra/nginx/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
