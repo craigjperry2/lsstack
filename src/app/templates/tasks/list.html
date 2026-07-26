@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Tasks · lsstack{% endblock %}
+{% block content %}
+  <h1>Your tasks</h1>
+  <article>
+    <header><h2>Add a task</h2></header>
+    <div id="task-create-feedback" aria-live="polite">
+      {% include "tasks/create_validation.html" %}
+    </div>
+    <form action="/tasks" method="post"
+          hx-post="/tasks" hx-target="#task-create-feedback" hx-swap="innerHTML"
+          hx-disabled-elt="find button">
+      {{ csrf_input | safe }}
+      <label for="title">Title</label>
+      <input id="title" name="title" required maxlength="200"
+             value="{{ values.title | default('') }}">
+      <label for="description">Description <small>(optional)</small></label>
+      <textarea id="description" name="description" maxlength="5000"
+                rows="3">{{ values.description | default('') }}</textarea>
+      <button type="submit">Add task</button>
+    </form>
+  </article>
+  <section aria-labelledby="task-list-heading">
+    <h2 id="task-list-heading">Task list</h2>
+    <div id="task-list" aria-live="polite">
+      {% include "tasks/list_fragment.html" %}
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,96 @@
+services:
+  postgres:
+    image: postgres:17.6-alpine3.22
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lsstack}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev_password}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/10-lsstack.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+
+  lgtm:
+    image: grafana/otel-lgtm:0.27.1
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /otel-lgtm/grafana/conf/provisioning/dashboards/lsstack/lsstack.json
+    ports:
+      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    volumes:
+      - lgtm_data:/data
+      - ./infra/observability/grafana/provisioning/dashboards/lsstack.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/lsstack.yaml:ro
+      - ./infra/observability/grafana/provisioning/dashboards/lsstack.json:/otel-lgtm/grafana/conf/provisioning/dashboards/lsstack/lsstack.json:ro
+      - ./infra/observability/grafana/provisioning/alerting/event-loop-lag.yaml:/otel-lgtm/grafana/conf/provisioning/alerting/event-loop-lag.yaml:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - test -f /tmp/ready
+      interval: 5s
+      timeout: 5s
+      retries: 36
+      start_period: 20s
+    restart: unless-stopped
+
+  nginx-log-collector:
+    image: otel/opentelemetry-collector-contrib:0.153.0
+    command:
+      - --config=/etc/otelcol-contrib/config.yaml
+    volumes:
+      - nginx_logs:/var/log/nginx:ro
+      - ./infra/observability/nginx-otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      lgtm:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - /otelcol-contrib
+        - components
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.29.8-alpine3.23
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - nginx_logs:/var/log/nginx-json
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nginx-log-collector:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q -O /dev/null http://127.0.0.1:8080/nginx-health
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  lgtm_data:
+  nginx_logs:
+  postgres_data:

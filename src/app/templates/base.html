@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>{% block title %}lsstack{% endblock %}</title>
+    <link rel="stylesheet" href="/static/vendor/pico-2.1.1.min.css">
+    <link rel="stylesheet" href="/static/app-v1.css">
+    <script defer src="/static/vendor/htmx-2.0.10.min.js"></script>
+  </head>
+  <body>
+    <header>
+      <nav aria-label="Primary navigation">
+        <ul>
+          <li><a href="/" aria-label="lsstack home"><strong>lsstack</strong></a></li>
+        </ul>
+        <ul>
+          {% if current_user %}
+            <li><a href="/tasks">Tasks</a></li>
+            <li><a href="/profile">Profile</a></li>
+            <li>
+              <form class="inline" action="/logout" method="post">
+                {{ csrf_input | safe }}
+                <button class="secondary outline" type="submit">Log out</button>
+              </form>
+            </li>
+          {% else %}
+            <li><a href="/login">Log in</a></li>
+            <li><a href="/register">Register</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </header>
+    <main id="main-content">
+      {% if message %}
+        <p role="status">{{ message }}</p>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+    <footer>
+      <small>A local-first Litestar starter.</small>
+    </footer>
+  </body>
+</html>

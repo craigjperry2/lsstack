@@ -1,0 +1,29 @@
+<article class="task-row" id="task-{{ task.public_id }}"{% if task_row_oob %} hx-swap-oob="{{ task_row_oob }}"{% endif %}>
+  <header>
+    <h3{% if task.is_completed %} class="completed"{% endif %}>{{ task.title }}</h3>
+    {% include "tasks/status.html" %}
+  </header>
+  {% if task.description %}
+    <p class="task-description">{{ task.description }}</p>
+  {% endif %}
+  <footer>
+    <form action="/tasks/{{ task.public_id }}/toggle" method="post"
+          hx-post="/tasks/{{ task.public_id }}/toggle"
+          hx-target="#task-{{ task.public_id }}" hx-swap="outerHTML"
+          hx-disabled-elt="find button">
+      {{ csrf_input | safe }}
+      <button class="secondary" type="submit">
+        {% if task.is_completed %}Mark incomplete{% else %}Mark complete{% endif %}
+      </button>
+    </form>
+    <a role="button" class="secondary outline"
+       href="/tasks/{{ task.public_id }}/edit">Edit</a>
+    <form action="/tasks/{{ task.public_id }}/delete" method="post"
+          hx-post="/tasks/{{ task.public_id }}/delete"
+          hx-target="#task-{{ task.public_id }}" hx-swap="outerHTML"
+          hx-disabled-elt="find button">
+      {{ csrf_input | safe }}
+      <button class="contrast outline" type="submit">Delete</button>
+    </form>
+  </footer>
+</article>

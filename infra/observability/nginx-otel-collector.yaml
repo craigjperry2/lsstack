@@ -1,0 +1,54 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  file_log/access:
+    include:
+      - /var/log/nginx/access.json.log
+    include_file_name: false
+    start_at: beginning
+    operators:
+      - type: json_parser
+        parse_from: body
+        timestamp:
+          parse_from: attributes.timestamp
+          layout_type: gotime
+          layout: "2006-01-02T15:04:05-07:00"
+processors:
+  batch:
+    send_batch_size: 256
+    timeout: 1s
+  resource/nginx:
+    attributes:
+      - action: upsert
+        key: service.name
+        value: nginx
+      - action: upsert
+        key: deployment.environment.name
+        value: local
+
+exporters:
+  otlp_grpc/lgtm:
+    endpoint: lgtm:4317
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+      queue_size: 512
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 60s
+
+service:
+  extensions:
+    - health_check
+  pipelines:
+    logs/access:
+      receivers:
+        - file_log/access
+      processors:
+        - resource/nginx
+        - batch
+      exporters:
+        - otlp_grpc/lgtm

@@ -1,0 +1,37 @@
+[importlinter]
+root_package = app
+include_external_packages = true
+
+[importlinter:contract:domain-boundary]
+name = Domain has no outward dependencies
+type = forbidden
+source_modules =
+    app.domain
+forbidden_modules =
+    app.application
+    app.adapters
+    asyncio
+    anyio
+    httpx
+    litestar
+    opentelemetry
+    psycopg
+    saq
+    sqlalchemy
+
+[importlinter:contract:application-boundary]
+name = Application depends only on domain and its own ports
+type = forbidden
+source_modules =
+    app.application
+forbidden_modules =
+    app.adapters
+    asyncio
+    anyio
+    httpx
+    litestar
+    opentelemetry
+    psycopg
+    saq
+    sqlalchemy
+

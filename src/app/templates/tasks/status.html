@@ -1,0 +1,9 @@
+{% if task.background_processed_at %}
+  <span id="task-status-{{ task.public_id }}" class="status-processed"
+        role="status">Processed</span>
+{% else %}
+  <span id="task-status-{{ task.public_id }}" class="status-pending"
+        role="status" aria-live="polite"
+        hx-get="/tasks/{{ task.public_id }}/status"
+        hx-trigger="every 400ms" hx-swap="outerHTML">Processing…</span>
+{% endif %}

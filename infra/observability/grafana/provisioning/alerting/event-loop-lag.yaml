@@ -1,0 +1,75 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: lsstack-runtime
+    folder: lsstack
+    interval: 10s
+    rules:
+      - uid: lsstack-event-loop-lag
+        title: Event loop lag above 20 ms
+        condition: C
+        for: 30s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          description: The host application's measured event-loop drift has exceeded 20 ms.
+          summary: lsstack event loop is lagging
+        labels:
+          severity: warning
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 60
+              to: 0
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: max_over_time(event_loop_lag_seconds[30s])
+              instant: true
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 0
+              to: 0
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange:
+              from: 0
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0.02
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              refId: C
+              type: threshold
+
