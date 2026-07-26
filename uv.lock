@@ -569,7 +569,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-logging", specifier = ">=0.57b0,<0.58" },
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.57b0,<0.58" },
     { name = "opentelemetry-sdk", specifier = ">=1.36,<2" },
-    { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.2.9,<4" },
+    { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.3.4,<4" },
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.3.0,<0.4" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.11.7,<3" },
     { name = "pydantic-settings", specifier = ">=2.10.1,<3" },
