@@ -65,7 +65,7 @@ http {
     send_timeout 30s;
 
     upstream host_application {
-        server host.docker.internal:8000;
+        server host.docker.internal:${NGINX_UPSTREAM_PORT};
         keepalive 16;
     }
 
