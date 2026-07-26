@@ -28,7 +28,7 @@ dependencies = [
     "python-multipart>=0.0.20,<0.1",
     "saq[postgres]>=0.26.4",
     "sqids>=0.5.2,<0.6",
-    "sqlalchemy[asyncio]>=2.0.43,<3",
+    "sqlalchemy[asyncio]>=2.0.51,<3",
     "structlog>=25.4,<26",
 ]
 
