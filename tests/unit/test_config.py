@@ -98,7 +98,7 @@ def test_service_urls_require_safe_absolute_http_endpoints(
     field: str,
     value: str,
 ) -> None:
-    with pytest.raises(ValidationError, match="must|invalid"):
+    with pytest.raises(ValidationError, match=r"must|invalid"):
         Settings(**{field: value})  # pyright: ignore[reportArgumentType]
 
 
