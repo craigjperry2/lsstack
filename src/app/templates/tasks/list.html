@@ -2,21 +2,27 @@
 {% block title %}Tasks · lsstack{% endblock %}
 {% block content %}
   <h1>Your tasks</h1>
-  <article>
+  <article class="task-create">
     <header><h2>Add a task</h2></header>
     <div id="task-create-feedback" aria-live="polite">
       {% include "tasks/create_validation.html" %}
     </div>
-    <form action="/tasks" method="post"
+    <form class="task-create-form" action="/tasks" method="post"
           hx-post="/tasks" hx-target="#task-create-feedback" hx-swap="innerHTML"
           hx-disabled-elt="find button">
       {{ csrf_input | safe }}
-      <label for="title">Title</label>
-      <input id="title" name="title" required maxlength="200"
-             value="{{ values.title | default('') }}">
-      <label for="description">Description <small>(optional)</small></label>
-      <textarea id="description" name="description" maxlength="5000"
-                rows="3">{{ values.description | default('') }}</textarea>
+      <div class="task-create-form__fields">
+        <label for="title">
+          Title
+          <input id="title" name="title" required maxlength="200"
+                 value="{{ values.title | default('') }}">
+        </label>
+        <label for="description">
+          Description <small>(optional)</small>
+          <textarea id="description" name="description" maxlength="5000"
+                    rows="3">{{ values.description | default('') }}</textarea>
+        </label>
+      </div>
       <button type="submit">Add task</button>
     </form>
   </article>
