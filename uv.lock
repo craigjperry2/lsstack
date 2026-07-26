@@ -576,7 +576,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.20,<0.1" },
     { name = "saq", extras = ["postgres"], specifier = ">=0.26.4" },
     { name = "sqids", specifier = ">=0.5.2,<0.6" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.43,<3" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.51,<3" },
     { name = "structlog", specifier = ">=25.4,<26" },
 ]
 
