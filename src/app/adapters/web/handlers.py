@@ -411,7 +411,6 @@ async def create_task_action(request: WebRequest) -> WebResponse:
         context={
             "current_user": current_user,
             "task": _task_view(created, dependencies),
-            "task_row_oob": "afterbegin:#task-list",
         },
     )
 

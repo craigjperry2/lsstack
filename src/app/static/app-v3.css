@@ -29,9 +29,13 @@ body > header nav {
   padding-inline-start: 1rem;
 }
 
+.task-create-form {
+  max-width: 42rem;
+}
+
 .task-create-form__fields {
   display: grid;
-  gap: 0 1rem;
+  gap: 0.25rem;
 }
 
 .task-create-form__fields label {
@@ -106,9 +110,5 @@ body > header nav {
 @media (min-width: 64rem) {
   :root {
     font-size: 100%;
-  }
-
-  .task-create-form__fields {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   }
 }
