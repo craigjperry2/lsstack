@@ -1,5 +1,5 @@
 :root {
-  --app-max-width: 72rem;
+  --app-max-width: 64rem;
 }
 
 body > header,
@@ -29,20 +29,52 @@ body > header nav {
   padding-inline-start: 1rem;
 }
 
+.task-create-form__fields {
+  display: grid;
+  gap: 0 1rem;
+}
+
+.task-create-form__fields label {
+  margin-bottom: 0;
+}
+
+.task-create-form > button {
+  width: auto;
+  margin-bottom: 0;
+}
+
 .task-row {
   scroll-margin-top: 1rem;
 }
 
-.task-row header,
-.task-row footer {
+.task-row header {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.75rem;
 }
 
-.task-row footer form,
-.task-row footer a {
+.task-actions {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task-actions li,
+.task-actions form {
+  display: flex;
+  margin: 0;
+}
+
+.task-actions :is(button, [role="button"]) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
   margin: 0;
 }
 
@@ -69,4 +101,14 @@ body > header nav {
 
 [aria-busy="true"] {
   cursor: progress;
+}
+
+@media (min-width: 64rem) {
+  :root {
+    font-size: 100%;
+  }
+
+  .task-create-form__fields {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
 }

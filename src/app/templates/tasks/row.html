@@ -7,23 +7,31 @@
     <p class="task-description">{{ task.description }}</p>
   {% endif %}
   <footer>
-    <form action="/tasks/{{ task.public_id }}/toggle" method="post"
-          hx-post="/tasks/{{ task.public_id }}/toggle"
-          hx-target="#task-{{ task.public_id }}" hx-swap="outerHTML"
-          hx-disabled-elt="find button">
-      {{ csrf_input | safe }}
-      <button class="secondary" type="submit">
-        {% if task.is_completed %}Mark incomplete{% else %}Mark complete{% endif %}
-      </button>
-    </form>
-    <a role="button" class="secondary outline"
-       href="/tasks/{{ task.public_id }}/edit">Edit</a>
-    <form action="/tasks/{{ task.public_id }}/delete" method="post"
-          hx-post="/tasks/{{ task.public_id }}/delete"
-          hx-target="#task-{{ task.public_id }}" hx-swap="outerHTML"
-          hx-disabled-elt="find button">
-      {{ csrf_input | safe }}
-      <button class="contrast outline" type="submit">Delete</button>
-    </form>
+    <ul class="task-actions" aria-label="Actions for {{ task.title }}">
+      <li>
+        <form action="/tasks/{{ task.public_id }}/toggle" method="post"
+              hx-post="/tasks/{{ task.public_id }}/toggle"
+              hx-target="#task-{{ task.public_id }}" hx-swap="outerHTML"
+              hx-disabled-elt="find button">
+          {{ csrf_input | safe }}
+          <button class="secondary" type="submit">
+            {% if task.is_completed %}Mark incomplete{% else %}Mark complete{% endif %}
+          </button>
+        </form>
+      </li>
+      <li>
+        <a role="button" class="secondary outline"
+           href="/tasks/{{ task.public_id }}/edit">Edit</a>
+      </li>
+      <li>
+        <form action="/tasks/{{ task.public_id }}/delete" method="post"
+              hx-post="/tasks/{{ task.public_id }}/delete"
+              hx-target="#task-{{ task.public_id }}" hx-swap="outerHTML"
+              hx-disabled-elt="find button">
+          {{ csrf_input | safe }}
+          <button class="contrast outline" type="submit">Delete</button>
+        </form>
+      </li>
+    </ul>
   </footer>
 </article>

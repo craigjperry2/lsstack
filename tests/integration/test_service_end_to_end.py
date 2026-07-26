@@ -69,7 +69,7 @@ async def test_nginx_routing_request_ids_headers_and_static_cache_policy() -> No
         assert generated != "---"
         assert len(generated) == 32
 
-        static = await client.get("/static/app-v1.css")
+        static = await client.get("/static/app-v2.css")
         assert static.status_code == 200
         assert static.headers["content-type"].startswith("text/css")
         assert static.headers["cache-control"] == (

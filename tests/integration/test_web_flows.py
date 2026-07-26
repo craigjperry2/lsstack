@@ -214,6 +214,7 @@ def test_full_page_and_htmx_task_crud_and_pending_transition(
     page = web_harness.client.get("/tasks")
     assert "First task" in page.text
     assert 'hx-trigger="every 400ms"' in page.text
+    assert '<ul class="task-actions"' in page.text
     public_id = "task0001"
 
     toggled = web_harness.client.post(
