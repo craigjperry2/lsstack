@@ -1,3 +1,5 @@
 <span aria-hidden="true"></span>
-{% include "tasks/row.html" %}
+<div hx-swap-oob="afterbegin:#task-list">
+  {% include "tasks/row.html" %}
+</div>
 <span id="task-empty-state" hx-swap-oob="delete:#task-empty-state"></span>

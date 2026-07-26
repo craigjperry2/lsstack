@@ -1,4 +1,4 @@
-<article class="task-row" id="task-{{ task.public_id }}"{% if task_row_oob %} hx-swap-oob="{{ task_row_oob }}"{% endif %}>
+<article class="task-row" id="task-{{ task.public_id }}">
   <header>
     <h3{% if task.is_completed %} class="completed"{% endif %}>{{ task.title }}</h3>
     {% include "tasks/status.html" %}

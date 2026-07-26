@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from datetime import timedelta
 from typing import TYPE_CHECKING
@@ -307,7 +308,18 @@ def test_invalid_htmx_create_does_not_repeat_existing_rows(
         headers={"HX-Request": "true"},
     )
     assert created.status_code == 200
-    assert 'hx-swap-oob="afterbegin:#task-list"' in created.text
+    assert re.search(
+        r'<div hx-swap-oob="afterbegin:#task-list">\s*'
+        r'<article class="task-row" id="task-task0001">',
+        created.text,
+    )
+    task_row = re.search(
+        r'<article class="task-row".*?</article>',
+        created.text,
+        re.DOTALL,
+    )
+    assert task_row is not None
+    assert 'hx-swap-oob="afterbegin:#task-list"' not in task_row.group()
 
     invalid = web_harness.client.post(
         "/tasks",
