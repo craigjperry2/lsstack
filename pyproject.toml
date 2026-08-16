@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "MIT" }
 dependencies = [
-    "alembic>=1.16.5,<2",
+    "alembic>=1.19.1,<2",
     "anyio>=4.10,<5",
     "jinja2>=3.1.6,<4",
     "litestar[cryptography,jinja,standard]>=2.24.0,<3",
