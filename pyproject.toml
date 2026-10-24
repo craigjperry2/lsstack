@@ -36,13 +36,8 @@ dependencies = [
 quality = [
     "basedpyright>=1.31.4,<2",
     "import-linter>=2.4,<3",
-<<<<<<< HEAD
-    "prek>=0.4.11,<0.5",
-    "ruff>=0.16.3,<0.17",
-=======
     "prek>=0.4.13,<0.5",
-    "ruff>=0.16.0,<0.17",
->>>>>>> origin/main
+    "ruff>=0.16.3,<0.17",
 ]
 test = [
     "httpx>=0.28.1,<0.29",
