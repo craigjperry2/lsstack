@@ -28,7 +28,7 @@ dependencies = [
     "python-multipart>=0.0.20,<0.1",
     "saq[postgres]>=0.26.4",
     "sqids>=0.5.2,<0.6",
-    "sqlalchemy[asyncio]>=2.0.51,<3",
+    "sqlalchemy[asyncio]>=2.0.52,<3",
     "structlog>=26.1.0,<27",
 ]
 
@@ -36,15 +36,20 @@ dependencies = [
 quality = [
     "basedpyright>=1.31.4,<2",
     "import-linter>=2.4,<3",
+<<<<<<< HEAD
     "prek>=0.4.11,<0.5",
     "ruff>=0.16.3,<0.17",
+=======
+    "prek>=0.4.13,<0.5",
+    "ruff>=0.16.0,<0.17",
+>>>>>>> origin/main
 ]
 test = [
     "httpx>=0.28.1,<0.29",
     "pytest>=9.0.3,<10",
     "pytest-asyncio>=1.1,<2",
     "pytest-cov>=7.1.0,<8",
-    "time-machine>=3.2.0,<4",
+    "time-machine>=3.4.0,<4",
 ]
 
 [tool.hatch.build.targets.wheel]
